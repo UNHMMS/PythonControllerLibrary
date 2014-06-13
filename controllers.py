@@ -20,21 +20,6 @@ class AbstractController(object):
         return
 
     @abc.abstractmethod
-    def landing():
-        #performs the land command
-        return
-    
-    @abc.abstractmethod
-    def flying(self):
-        #performs the fly command
-        return
-    
-    @abc.abstractmethod
-    def killing(self):
-        #performs the kill command
-        return
-
-    @abc.abstractmethod
     def setMinOut(self):
         #sets the minimum output of the controller
         return
@@ -43,13 +28,19 @@ class AbstractController(object):
     def setMaxOut(self):
         #sets the maximum output of the controller
         return
+
+    @abc.abstractmethod
+    def setGains(self):
+        #change the gains of the controller
+        return
     
     def __str__(self):
         return 'This is a controller'
 
-
+#classic PID library, one of the most popular control schemes
 class PID( AbstractController ):
-    
+
+    #takes initial gains, desired value, and min and max output
     def __init__(self, kp, ki, kd, desired, minout, maxout):
         self.kp = float(kp)
         self.ki = float(ki)
@@ -60,6 +51,7 @@ class PID( AbstractController ):
         self.rollingSum = 0.0
         self.lastVal = 0.0
 
+    #prints the current gains, desired, and min/max output
     def __str__(self):
         string = 'PID Controller:\n'
         string += 'P Gain : ' + str(self.kp) + '\n'
@@ -70,6 +62,7 @@ class PID( AbstractController ):
         string += 'MinOut : ' + str(self.minout) + '\n'
         return string
 
+    #takes the current value and returns the controller output
     def doControl(self, current):
         #calculate error
         error = desired - current
@@ -95,35 +88,82 @@ class PID( AbstractController ):
 
         #and return the calculated value
         return output
-    
+
+    #sets the desired value of the controller to the passed in value
     def setDesired(self, newdesired):
         self.desired = newdesired
 
+    #sets the minimum output of the controller to the passed in value
     def setMinOut(self, newmin):
         self.minout = newmin
 
+    #sets the maximum output of the controller to the passed in value
     def setMaxOut(self, newmax):
         self.maxout = maxout
 
-    def flying(self):
-        print 'flying PID'
+    #sets the controller gains to the passed in values
+    def setGains(self, kp, ki, kd):
+        self.setPGain(kp)
+        self.setIGain(ki)
+        self.setDGain(kd)
 
-    def landing(self):
-        print 'landing PID'
+    #sets the P gain to the passed in value
+    def setPGain(self, kp):
+        self.kp = kp
 
-    def killing(self):
-        print 'killing PID'
+    #sets the I Gain to the passed in value
+    def setIGain(self, ki):
+        #multiply the rolling sum by the ratio of the new gain to the old gain
+        self.rollingSum *= (ki/self.ki)
 
+        #set the i gain to the new gain
+        self.ki = ki
+        
+
+    #sets the D Gain to the passed in value
+    def setDGain(self, kd):
+        self.kd = kd
+
+    #clears the reolling sum, allowing for a reset of the controller
+    def resetRollingSum(self):
+        self.rollingSum = 0.0
+        
+        
+#Linear Quadratic Regulator controller, linear matrix controller
 class LQR( AbstractController ):
 
-    def __init__(self):
+    #checks to make sure the matrix matches up with the desired values and saves the values
+    def __init__(self, matrix, desired,):
+        if not len(desired) == len(matrix[0]):
+            print 'You need to have the same amount of desired states as the height of the k matrix'
+            self.k = -1
+            self.desired = -1
+            return
+
+        self.k = np.asarray( matrix )
+        self.desired = desired
+        
         print 'LQR consctructor'
 
+    #prints the current gains and desired state
     def __str__(self):
-        return 'This is a LQR Controller'
+        string = 'LQR Controller:\n"
+        string += 'K matrix: ' + str(self.k) + '\n' 
+        string += 'Desired : ' + str(self.desired)
+        return string
 
-    def doControl(self):
-        print 'doing LQR'
+    #does the lqr and returns a list of outputs
+    def doControl(self, curState):
+        if not len(self.desired) == len( curState )
+            print 'Your State matrix does not have enough values'
+            return -1
+
+        #calculate the errors of all the states
+        errors = [ desired - acutal for desired, acutal in zip (self.desired, curState ) ]
+
+        #multiply the errors by the K matrix and return the matrix 
+        return self.k.dot( errors )
+        
 
     def setDesired(self, newdesired):
         self.desired = newdesired
@@ -133,15 +173,6 @@ class LQR( AbstractController ):
 
     def setMaxOut(self, newmax):
         self.maxout = maxout
-
-    def flying(self):
-        print 'flying LQR'
-
-    def landing(self):
-        print 'landing LQR'
-
-    def killing(self):
-        print 'killing LQR'
 
 class SMC( AbstractController ):
 
@@ -162,15 +193,6 @@ class SMC( AbstractController ):
 
     def setMaxOut(self, newmax):
         self.maxout = maxout
-
-    def flying(self):
-        print 'flying SMC'
-
-    def landing(self):
-        print 'landing SMC'
-
-    def killing(self):
-        print 'killing SMC'
 
 
 #Unimplemented because I don't know how to implement it yet
@@ -193,12 +215,3 @@ class HInfinity( AbstractController ):
 
     def setMaxOut(self, newmax):
         self.maxout = maxout
-
-    def flying(self):
-        print 'flying H infinity'
-
-    def landing(self):
-        print 'landing H infinity'
-
-    def killing(self):
-        print 'killing H infinity'
